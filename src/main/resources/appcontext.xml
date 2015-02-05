@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+                           http://www.springframework.org/schema/aop
+                           http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+                           http://www.springframework.org/schema/context
+                           http://www.springframework.org/schema/context/spring-context-3.0.xsd
+                           http://www.springframework.org/schema/security
+                           http://www.springframework.org/schema/security/spring-security-3.0.4.xsd">
+
+    <!-- Scans for annotated bean classes -->
+    <context:component-scan base-package="springsec" />
+
+    <!-- Maps all @Controller classes -->
+    <bean id="shared_annotationHandlerMapping"
+          class="org.springframework.web.servlet.mvc.annotation.DefaultAnnotationHandlerMapping">
+    </bean>
+
+    <!-- User storage wrapper (plugs into DAO Authenticator -->
+    <bean id="springSecUserStorage" class="springsec.sec.SpringSecUserStorage">
+    </bean>
+
+    <!-- Our DAO authenticator (plugs in into Authentication Manager) -->
+    <bean id="daoAuthenticationProvider" class="springsec.sec.CustomAuthProvider">
+        <property name="userDetailsService" ref="springSecUserStorage"/>
+    </bean>
+
+    <!-- Authenticates clients by auth tokens -->
+    <bean id="tokenAuthenticaticationFileter" class="springsec.sec.AuthTokenAuthenticationFilter">
+    </bean>
+
+    <!-- Authentication manager (makes authentication decision) -->
+    <security:authentication-manager alias="authenticationManager">
+        <security:authentication-provider ref="daoAuthenticationProvider"/>
+    </security:authentication-manager>
+
+    <!-- Security filters -->
+    <bean id="springSecurityFilterChain" class="org.springframework.security.web.FilterChainProxy">
+        <security:filter-chain-map path-type="ant">
+            <security:filter-chain pattern="/**"
+                                   filters="securityContextPersistenceFilter,
+                                            tokenAuthenticaticationFileter,
+                                            anonymousAuthFilter,
+                                            apiFilterSecurityInterceptor"/>
+        </security:filter-chain-map>
+    </bean>
+
+    <!-- Authorization Filter -->
+    <bean id="apiFilterSecurityInterceptor"
+          class="org.springframework.security.web.access.intercept.FilterSecurityInterceptor">
+        <property name="authenticationManager" ref="authenticationManager"/>
+        <property name="accessDecisionManager">
+            <bean class="org.springframework.security.access.vote.AffirmativeBased">
+                <property name="decisionVoters">
+                    <list>
+                        <!-- TODO make add suspendVoter to adjust grunts in real time-->
+                        <bean class="org.springframework.security.access.vote.RoleVoter" />
+                        <bean class="org.springframework.security.access.vote.AuthenticatedVoter" />
+                    </list>
+                </property>
+            </bean>
+        </property>
+        <property name="securityMetadataSource">
+            <security:filter-security-metadata-source>
+                <security:intercept-url pattern="/web/login" access="IS_AUTHENTICATED_ANONYMOUSLY,IS_AUTHENTICATED_FULLY"/>
+                <security:intercept-url pattern="/web/loginInfo" access="IS_AUTHENTICATED_ANONYMOUSLY,IS_AUTHENTICATED_FULLY"/>
+                <security:intercept-url pattern="/web/loginToken" access="IS_AUTHENTICATED_ANONYMOUSLY,IS_AUTHENTICATED_FULLY"/>
+                <security:intercept-url pattern="/web/logout" access="IS_AUTHENTICATED_ANONYMOUSLY,IS_AUTHENTICATED_FULLY"/>
+                <security:intercept-url pattern="/web/**" access="ROLE_SUPER,ROLE_ADMIN,ROLE_MANAGER,ROLE_USER" />
+            </security:filter-security-metadata-source>
+        </property>
+    </bean>
+
+    <!-- Saves SecurityContext in HTTP session -->
+    <bean id="securityContextPersistenceFilter" class="org.springframework.security.web.context.SecurityContextPersistenceFilter">
+        <property name='securityContextRepository'>
+            <bean class='org.springframework.security.web.context.HttpSessionSecurityContextRepository'>
+                <property name='allowSessionCreation' value='false' />
+            </bean>
+        </property>
+    </bean>
+
+    <!-- Sets anonymous principal for users that not logged in -->
+    <bean id="anonymousAuthFilter"
+          class="org.springframework.security.web.authentication.AnonymousAuthenticationFilter">
+        <property name="key" value="foobar"/>
+        <property name="userAttribute" value="anonymousUser,ROLE_ANONYMOUS"/>
+    </bean>
+</beans>

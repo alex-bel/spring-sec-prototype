@@ -1,0 +1,30 @@
+apply plugin: 'java'
+apply plugin: 'groovy'
+apply plugin: 'war'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile 'org.codehaus.groovy:groovy-all:2.3.6'
+
+    providedRuntime 'javax.servlet:servlet-api:2.5'
+    compile 'org.springframework:spring-core:3.0.5.RELEASE'
+    compile 'org.springframework:spring-beans:3.0.5.RELEASE'
+    compile 'org.springframework:spring-webmvc:3.0.5.RELEASE'
+
+    compile ('org.springframework.security:spring-security-core:3.0.5.RELEASE') {
+        exclude group: 'org.springframework', module: 'spring-core'
+        exclude group: 'org.springframework', module: 'spring-beans'
+        exclude group: 'org.springframework', module: 'spring-webmvc'
+    }
+
+    compile 'org.springframework.security:spring-security-config:3.0.5.RELEASE'
+    compile ('org.springframework.security:spring-security-web:3.0.5.RELEASE') {
+        exclude group: 'org.springframework', module: 'spring-web'
+    }
+
+    compile 'org.apache.commons:commons-lang3:3.3.2'
+    compile 'com.google.guava:guava:12.0'
+}
